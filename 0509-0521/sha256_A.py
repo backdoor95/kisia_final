@@ -12,7 +12,7 @@ parser.add_argument("-input", help="대상 CSV 파일명")
 parser.add_argument("-output", help="출력 대상 파일명")
 parser.add_argument("-algorithm", 
                     help="비식별 알고리즘 선택\n"
-                    +"A:주요정보+솔트 => 암호화\n"
+                    +"A:솔트 암호화\n"
                     +"B:순서보존 암호화\n"
                     +"C:형태보존 암호화\n")
 parser.add_argument("-option", help="비식별 알고리즘 행동 선택(마스킹시 뒷자리(1)/앞자리(2)/숫자(3) 등)")
@@ -48,18 +48,70 @@ def hash_sensitive_data(row):
     hashed_value = hash_with_salt(user_data, salt)
     return hashed_value, salt
 
+##############################################################################################
+# 가명처리 함수 정의
+def anonymize_name_back(name):
+    return name[0] + '*'*2
+def anonymize_name_front(name):
+    return '*'*2 + name[2]
+
+def anonymize_address(address):
+    parts = address.split(' ', 1)
+    return parts[0]
+
+def anonymize_postcode(postcode):
+    return '*'*5
+
+def anonymize_company(company):
+    return '*'*8
+
+def anonymize_phone_number_back(phone_number):
+    parts = phone_number.rsplit('-', 1)
+    return parts[0] + '-' + '*'*4
+
+def anonymize_phone_number_front(phone_number):
+    parts = phone_number.split('-', 1)
+    return '*'*3+'-'+'*'*4 + parts[1]
+
+def anonymize_email(email):
+    local, domain = email.split('@')
+    return '*'*5 + '@' + domain
+
+def anonymize_credit_card_number_back(credit_card_number):
+    return  credit_card_number[:6] + '*'*10
+
+def anonymize_credit_card_number_front(credit_card_number):
+    return  '*'*10 + credit_card_number[-6:]
+##############################################################################################
+
+
+def masking_front():
+    df['name'] = df['name'].apply(anonymize_name_back)
+    df['phone_number'] = df['phone_number'].apply(anonymize_phone_number_back)
+    df['credit_card_number'] = df['credit_card_number'].apply(anonymize_credit_card_number_back)
+    
+    
 
 if args.algorithm == 'A':
     print("algorithm A start")
     # 새로운 컬럼을 추가합니다.
     df[['hashed_value', 'salt']] = df.apply(lambda row: pd.Series(hash_sensitive_data(row)), axis=1)
     # 원래 민감한 정보를 포함한 컬럼을 삭제합니다.
-    df = df.drop(columns=['name', 'email', 'phone_number', 'credit_card_number'])
+    #df = df.drop(columns=['name', 'email', 'phone_number', 'credit_card_number'])
     ##### 
-    df.to_csv(outputFile, index=False)
+    df.to_csv(outputFile, index=False)# 파일을 저장
     print("algorithm A end")
 
+if args.option == '1':
+    print("option-1 start")
+    masking_front()
+    df.to_csv(outputFile, index=False)# 파일을 저장 -> 이 부분이 비어있으면 업데이트가 안됨.
+    print("option-1 end")
 
+
+
+
+print("-- finish --")
 
 
 
